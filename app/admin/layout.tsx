@@ -8,6 +8,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar();
   return (
     <div className="min-h-screen bg-[#f8f8f5] text-ink">
+      <meta name="robots" content="noindex,nofollow" />
       <AdminSidebar />
       <div
         className={`flex min-h-screen flex-col transition-all duration-300 ${

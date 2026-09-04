@@ -34,6 +34,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in a browser.
 
+### Vercel deployment
+
+This is a standard Next.js App Router project and can be imported directly into Vercel with the default build settings. For production canonical URLs and sitemap links, set:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://your-production-domain.example
+```
+
+The public landing page is indexable. Sign-in and role workspaces are marked `noindex` and excluded from `robots.txt` because they contain private, mock workspace data.
+
 ### Available Scripts
 
 ```bash
