@@ -15,6 +15,20 @@ import {
   quickActions,
 } from "@/lib/mock-data/admin-dashboard";
 
+const primaryKpis = kpiCards.slice(0, 4);
+const secondaryKpis = kpiCards.slice(4);
+
+const overviewRouteMap: Record<string, string> = {
+  "Total Students": "/admin/users",
+  "Academicians": "/admin/users",
+  "Registered Industries": "/admin/users",
+  "Active Opportunities": "/admin/opportunities",
+  "Total Applications": "/admin/applications",
+  "Placement Rate": "/admin/analytics",
+  "Average Skill Readiness": "/admin/skills",
+  "Students with Skill Gaps": "/admin/skills",
+};
+
 const statusStyles: Record<string, string> = {
   "Pending Approval": "warning",
   Completed: "success",
@@ -34,11 +48,11 @@ export default function AdminDashboardPage() {
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">{adminSummary.subtitle}</p>
         </div>
 
-        <Button className="w-fit">Generate report</Button>
+        <Link href="/admin/reports?generate=true"><Button className="w-fit">Generate report</Button></Link>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpiCards.map((item) => (
+        {primaryKpis.map((item) => (
           <KpiCard
             key={item.title}
             title={item.title}
@@ -46,8 +60,34 @@ export default function AdminDashboardPage() {
             trend={item.trend}
             accent={item.accent}
             icon={item.icon}
+            href={overviewRouteMap[item.title]}
           />
         ))}
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted">Overview</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em] text-ink">More platform metrics</h2>
+          </div>
+          <Link href="/admin/analytics" className="text-xs font-semibold uppercase tracking-[0.12em] text-muted hover:text-ink">
+            View analytics
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {secondaryKpis.map((item) => (
+            <KpiCard
+              key={item.title}
+              title={item.title}
+              value={item.value}
+              trend={item.trend}
+              accent={item.accent}
+              icon={item.icon}
+              href={overviewRouteMap[item.title]}
+            />
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
@@ -112,9 +152,9 @@ export default function AdminDashboardPage() {
               eyebrow="Activity"
               title="Recent platform activity"
               action={
-                <Button variant="ghost" className="text-xs uppercase tracking-[0.12em] text-muted">
+                <Link href="/admin/reports?section=activity"><Button variant="ghost" className="text-xs uppercase tracking-[0.12em] text-muted">
                   View all
-                </Button>
+                </Button></Link>
               }
             />
           </CardHeader>

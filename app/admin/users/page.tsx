@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Building2, GraduationCap, Users } from "lucide-react";
 
 import { UserDetailDialog, StatusBadge } from "@/components/admin/users/user-detail-dialog";
@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { academicians, industries, students, type Academician, type Industry, type Student } from "@/lib/mock-data/users";
+import { readAdminStorage, writeAdminStorage } from "@/lib/admin-storage";
+import { ConfirmationDialog } from "@/components/admin/shared/confirmation-dialog";
+import { ReasonDialog } from "@/components/admin/shared/reason-dialog";
 
 type UserTab = "students" | "academicians" | "industries";
 
@@ -32,6 +35,12 @@ export default function AdminUsersPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedAcademician, setSelectedAcademician] = useState<Academician | null>(null);
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null);
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>(() => readAdminStorage("skillconnect-admin-user-status", {}));
+  const [confirmTarget, setConfirmTarget] = useState<{ id: string; label: string; status: string } | null>(null);
+  const [rejectIndustry, setRejectIndustry] = useState<Industry | null>(null);
+
+  const statusFor = useCallback((item: { id: string; status?: string; verificationStatus?: string }) => statusOverrides[item.id] ?? item.status ?? item.verificationStatus ?? "", [statusOverrides]);
+  const updateStatus = (id: string, status: string) => { const next = { ...statusOverrides, [id]: status }; setStatusOverrides(next); writeAdminStorage("skillconnect-admin-user-status", next); setSelectedStudent((current) => current?.id === id ? { ...current, status: status as Student["status"] } : current); setSelectedAcademician((current) => current?.id === id ? { ...current, status: status as Academician["status"] } : current); setSelectedIndustry((current) => current?.id === id ? { ...current, verificationStatus: status as Industry["verificationStatus"] } : current); };
 
   const studentDepartments = Array.from(new Set(students.map((student) => student.department)));
   const academicianDepartments = Array.from(new Set(academicians.map((academician) => academician.department)));
@@ -57,11 +66,11 @@ export default function AdminUsersPage() {
         student.name.toLowerCase().includes(search.toLowerCase()) ||
         student.email.toLowerCase().includes(search.toLowerCase()) ||
         student.id.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || student.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || statusFor(student) === statusFilter;
       const matchesDepartment = departmentFilter === "all" || student.department === departmentFilter;
       return matchesSearch && matchesStatus && matchesDepartment;
     });
-  }, [departmentFilter, search, statusFilter]);
+  }, [departmentFilter, search, statusFilter, statusFor]);
 
   const filteredAcademicians = useMemo(() => {
     return academicians.filter((academician) => {
@@ -69,11 +78,11 @@ export default function AdminUsersPage() {
         academician.name.toLowerCase().includes(search.toLowerCase()) ||
         academician.email.toLowerCase().includes(search.toLowerCase()) ||
         academician.id.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || academician.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || statusFor(academician) === statusFilter;
       const matchesDepartment = departmentFilter === "all" || academician.department === departmentFilter;
       return matchesSearch && matchesStatus && matchesDepartment;
     });
-  }, [departmentFilter, search, statusFilter]);
+  }, [departmentFilter, search, statusFilter, statusFor]);
 
   const filteredIndustries = useMemo(() => {
     return industries.filter((industry) => {
@@ -81,11 +90,11 @@ export default function AdminUsersPage() {
         industry.name.toLowerCase().includes(search.toLowerCase()) ||
         industry.email.toLowerCase().includes(search.toLowerCase()) ||
         industry.id.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === "all" || industry.verificationStatus === statusFilter;
+      const matchesStatus = statusFilter === "all" || statusFor(industry) === statusFilter;
       const matchesDepartment = departmentFilter === "all" || industry.domain === departmentFilter;
       return matchesSearch && matchesStatus && matchesDepartment;
     });
-  }, [departmentFilter, search, statusFilter]);
+  }, [departmentFilter, search, statusFilter, statusFor]);
 
   const summaryCards =
     activeTab === "students"
@@ -115,6 +124,7 @@ export default function AdminUsersPage() {
       : activeTab === "academicians"
         ? filteredAcademicians
         : filteredIndustries;
+  const displayRows = tableRows.map((row) => ({ ...row, ...(activeTab === "industries" ? { verificationStatus: statusFor(row as Industry) } : { status: statusFor(row as Student | Academician) }) }));
 
   const handleReset = () => {
     setSearch("");
@@ -253,7 +263,7 @@ export default function AdminUsersPage() {
               ? "Academicians"
               : "Industries"
         }
-        rows={tableRows as unknown as Array<Student | Academician | Industry>}
+        rows={displayRows as unknown as Array<Student | Academician | Industry>}
         columns={selectedColumns as unknown as Array<{ key: string; label: string; render?: (row: Student | Academician | Industry) => React.ReactNode; className?: string }>}
         onView={
           activeTab === "students"
@@ -280,7 +290,7 @@ export default function AdminUsersPage() {
                   <p className="text-sm text-slate-500">{selectedStudent.email}</p>
                 </div>
               </div>
-              <StatusBadge status={selectedStudent.status} />
+              <StatusBadge status={statusFor(selectedStudent)} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -330,6 +340,7 @@ export default function AdminUsersPage() {
                 ))}
               </div>
             </div>
+            <div className="flex justify-end border-t border-slate-200 pt-4"><Button variant="outline" onClick={() => setConfirmTarget({ id: selectedStudent.id, label: selectedStudent.name, status: statusFor(selectedStudent) === "Suspended" ? "Active" : "Suspended" })}>{statusFor(selectedStudent) === "Suspended" ? "Reactivate" : "Suspend"} account</Button></div>
           </div>
         </UserDetailDialog>
       ) : null}
@@ -350,7 +361,7 @@ export default function AdminUsersPage() {
                   <p className="text-sm text-slate-500">{selectedAcademician.email}</p>
                 </div>
               </div>
-              <StatusBadge status={selectedAcademician.status} />
+              <StatusBadge status={statusFor(selectedAcademician)} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -372,6 +383,7 @@ export default function AdminUsersPage() {
               <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Phone</p>
               <p className="mt-1 text-sm text-slate-700">{selectedAcademician.phone}</p>
             </div>
+            <div className="flex justify-end border-t border-slate-200 pt-4"><Button variant="outline" onClick={() => setConfirmTarget({ id: selectedAcademician.id, label: selectedAcademician.name, status: statusFor(selectedAcademician) === "Suspended" ? "Active" : "Suspended" })}>{statusFor(selectedAcademician) === "Suspended" ? "Reactivate" : "Suspend"} account</Button></div>
           </div>
         </UserDetailDialog>
       ) : null}
@@ -392,7 +404,7 @@ export default function AdminUsersPage() {
                   <p className="text-sm text-slate-500">{selectedIndustry.location}</p>
                 </div>
               </div>
-              <StatusBadge status={selectedIndustry.verificationStatus} />
+              <StatusBadge status={statusFor(selectedIndustry)} />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
@@ -433,9 +445,12 @@ export default function AdminUsersPage() {
                 <p className="mt-1 text-sm text-slate-700">{selectedIndustry.phone}</p>
               </div>
             </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">{statusFor(selectedIndustry) === "Pending" ? <><Button onClick={() => setConfirmTarget({ id: selectedIndustry.id, label: selectedIndustry.name, status: "Verified" })}>Approve industry</Button><Button variant="outline" onClick={() => setRejectIndustry(selectedIndustry)}>Reject industry</Button></> : <Button variant="outline" onClick={() => setConfirmTarget({ id: selectedIndustry.id, label: selectedIndustry.name, status: statusFor(selectedIndustry) === "Verified" ? "Suspended" : "Verified" })}>{statusFor(selectedIndustry) === "Verified" ? "Suspend partner" : "Reactivate partner"}</Button>}</div>
           </div>
         </UserDetailDialog>
       ) : null}
+      <ConfirmationDialog open={Boolean(confirmTarget)} onOpenChange={(open) => !open && setConfirmTarget(null)} title={`${confirmTarget?.status === "Verified" ? "Approve" : confirmTarget?.status === "Suspended" ? "Suspend" : "Reactivate"} ${confirmTarget?.label ?? "account"}?`} description="This status is saved in this browser for the admin workspace." onConfirm={() => { if (confirmTarget) updateStatus(confirmTarget.id, confirmTarget.status); setConfirmTarget(null); }} />
+      <ReasonDialog open={Boolean(rejectIndustry)} onOpenChange={(open) => !open && setRejectIndustry(null)} title="Reject industry partner" description="A reason is required for the rejection decision." confirmLabel="Reject industry" onConfirm={() => { if (rejectIndustry) updateStatus(rejectIndustry.id, "Rejected"); setRejectIndustry(null); }} />
     </div>
   );
 }

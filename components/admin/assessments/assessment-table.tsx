@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Assessment } from "@/lib/mock-data/assessments";
 
-function ActionMenu({ item, onEdit, onDelete }: { item: Assessment; onEdit: () => void; onDelete: () => void }) {
+function ActionMenu({ item, onEdit, onDelete, onArchive }: { item: Assessment; onEdit: () => void; onDelete: () => void; onArchive: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,6 +36,12 @@ function ActionMenu({ item, onEdit, onDelete }: { item: Assessment; onEdit: () =
             onClick={() => { setOpen(false); onEdit(); }}
           >
             <Pencil className="h-3.5 w-3.5 text-indigo-500" /> Edit
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-amber-700 hover:bg-amber-50"
+            onClick={() => { setOpen(false); onArchive(); }}
+          >
+            Archive
           </button>
           <button
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
@@ -98,6 +104,7 @@ export function AssessmentTable({
                 item={item}
                 onEdit={() => onEdit(item)}
                 onDelete={() => onAction(item, "Delete")}
+                onArchive={() => onAction(item, "Archive")}
               />
             </TableCell>
           </TableRow>
