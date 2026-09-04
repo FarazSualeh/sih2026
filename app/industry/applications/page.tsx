@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { CandidateApplication, ApplicationStatus } from '@/lib/types';
 import { getStoredApplications, saveApplications } from '@/lib/mock-data/industry';
+import { useMockStore } from '@/lib/mock-store';
 
 const pipelineStages: ApplicationStatus[] = [
   'Applied',
@@ -21,6 +22,7 @@ const pipelineStages: ApplicationStatus[] = [
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<CandidateApplication[]>(() => getStoredApplications());
+  const { applications: sharedApplications, opportunities: sharedOpportunities, updateApplicationStatus } = useMockStore();
   const [selectedApp, setSelectedApp] = useState<CandidateApplication | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -58,6 +60,12 @@ export default function ApplicationsPage() {
             {toastMessage}
           </div>
         )}
+
+        <section className="rounded-3xl border border-[var(--border)] bg-white p-5 shadow-sm space-y-4">
+          <div><h3 className="text-lg font-bold text-slate-900">Applications Received</h3><p className="text-xs text-slate-500">Received by Industry · synchronized from student applications</p></div>
+          {sharedApplications.filter((application) => sharedOpportunities.some((opportunity) => opportunity.id === application.opportunityId && opportunity.company === 'TechCorp Innovations')).map((application) => <div key={application.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="font-bold text-slate-900">{application.studentName}</p><p className="text-xs text-slate-500">{application.opportunityTitle} · {application.appliedDate}</p></div><div className="flex flex-wrap items-center gap-2 text-xs"><span className="rounded bg-emerald-100 px-2 py-1 font-bold text-emerald-800">{application.matchScore}% Match</span><span className="rounded bg-slate-100 px-2 py-1">Readiness {application.readiness}%</span><span className="rounded bg-slate-100 px-2 py-1">Resume {application.resumeStatus}</span><span className="rounded bg-sky-100 px-2 py-1 font-bold text-sky-800">{application.status}</span></div><div className="flex flex-wrap gap-2"><button onClick={() => setToastMessage(`${application.studentName}: ${application.topSkills.map((skill) => skill.name).join(', ')}`)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold">View Application</button><button onClick={() => updateApplicationStatus(application.id, 'Shortlisted')} className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white">Shortlist</button><button onClick={() => updateApplicationStatus(application.id, 'Rejected')} className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white">Reject</button><button onClick={() => updateApplicationStatus(application.id, 'Interview', '2026-09-12 11:00 AM')} className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white">Schedule Interview</button><button onClick={() => updateApplicationStatus(application.id, 'Selected')} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">Mark Selected</button></div></div>)}
+          {sharedApplications.length === 0 && <p className="rounded-xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">No student applications received yet.</p>}
+        </section>
 
         {/* Section 6 Requirement: Pipeline Visual Workflow Bar */}
         <div className="rounded-3xl border border-[var(--border)] bg-white p-5 shadow-sm space-y-3">

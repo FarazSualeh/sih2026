@@ -14,6 +14,7 @@ import {
   SkillRequirement
 } from '@/lib/types';
 import { getStoredOpportunities, saveOpportunities } from '@/lib/mock-data/industry';
+import { useMockStore } from '@/lib/mock-store';
 
 const commonSkillsList = [
   'Python',
@@ -34,6 +35,7 @@ const commonSkillsList = [
 
 export default function PostOpportunityPage() {
   const router = useRouter();
+  const { publishOpportunity } = useMockStore();
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'Internship' | 'Trainee' | 'Full-Time' | 'Part-Time'>('Internship');
@@ -108,6 +110,7 @@ export default function PostOpportunityPage() {
 
     const currentOpps = getStoredOpportunities();
     saveOpportunities([newOpp, ...currentOpps]);
+    publishOpportunity({ id: newOpp.id, title: newOpp.title, company: newOpp.company, skills: newOpp.skillRequirements, eligibility: newOpp.eligibility, deadline: newOpp.deadline, openings: newOpp.openPositions, status: 'Live' });
     router.push('/industry/opportunities');
   };
 
