@@ -38,6 +38,8 @@ export interface QuestionDraft {
   marks: number;
 }
 
+export type AssessmentWithQuestions = Assessment & { authoredQuestions?: QuestionDraft[] };
+
 /* ────────────────────────────────────────────────
    Helpers
 ──────────────────────────────────────────────── */
@@ -118,7 +120,7 @@ export function CreateAssessmentDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessment?: Assessment;
-  onSave: (assessment: Assessment) => void;
+  onSave: (assessment: AssessmentWithQuestions) => void;
 }) {
   const [step, setStep] = useState<"details" | "questions" | "review">("details");
 
@@ -238,6 +240,7 @@ export function CreateAssessmentDialog({
       category,
       difficulty,
       questions: Math.max(1, questions.length),
+      authoredQuestions: questions,
       duration: Number(duration) || 45,
       passingMarks: Number(passingMarks) || 60,
       attemptsAllowed: Number(attempts) || 1,

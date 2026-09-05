@@ -127,6 +127,13 @@ type Assessment = {
   mark: string;
   description: string;
   published?: boolean;
+  authoredQuestions?: StudentQuestion[];
+};
+
+type StudentQuestion = {
+  prompt: string;
+  options: string[];
+  answer: number;
 };
 
 const assessments: Assessment[] = [
@@ -335,11 +342,12 @@ function TakingAssessment({
   onExit: () => void;
   onComplete: (assessment: Assessment, score: number, total: number) => void;
 }) {
+  const questionBank: StudentQuestion[] = assessment.authoredQuestions?.length ? assessment.authoredQuestions : questions;
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const question = questions[questionIndex];
-  const score = questions.reduce(
+  const question = questionBank[questionIndex];
+  const score = questionBank.reduce(
     (total, item, index) => total + (answers[index] === item.answer ? 1 : 0),
     0,
   );
@@ -354,12 +362,12 @@ function TakingAssessment({
           <h1 className="mt-2 font-display text-3xl font-semibold tracking-[-0.05em]">
             Your result is ready.
           </h1>
-          <p className="mt-3 text-sm text-muted">
+            <p className="mt-3 text-sm text-muted">
             {assessment.skill} assessment Â· Submitted just now
           </p>
           <div className="mx-auto my-8 max-w-xs rounded-2xl bg-[#f8f8f5] p-6">
             <p className="font-display text-5xl font-semibold tracking-[-0.08em]">
-              {Math.round((score / questions.length) * 100)}%
+              {Math.round((score / questionBank.length) * 100)}%
             </p>
             <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted">
               skill score
@@ -371,7 +379,7 @@ function TakingAssessment({
           </p>
           <button
             onClick={() => {
-              onComplete(assessment, score, questions.length);
+              onComplete(assessment, score, questionBank.length);
               onExit();
             }}
             className="mt-7 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-white transition hover:bg-[#d85643]"
@@ -400,17 +408,17 @@ function TakingAssessment({
       <div className="mb-8">
         <div className="mb-3 flex items-center justify-between text-xs font-bold">
           <span>
-            Question {questionIndex + 1} of {questions.length}
+            Question {questionIndex + 1} of {questionBank.length}
           </span>
           <span className="text-muted">
-            {Math.round(((questionIndex + 1) / questions.length) * 100)}%
+            {Math.round(((questionIndex + 1) / questionBank.length) * 100)}%
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-[#e5e6df]">
           <div
             className="h-full rounded-full bg-coral transition-all duration-500"
             style={{
-              width: `${((questionIndex + 1) / questions.length) * 100}%`,
+              width: `${((questionIndex + 1) / questionBank.length) * 100}%`,
             }}
           />
         </div>
@@ -447,7 +455,7 @@ function TakingAssessment({
             </span>
             Previous
           </button>
-          {questionIndex === questions.length - 1 ? (
+          {questionIndex === questionBank.length - 1 ? (
             <button
               onClick={() => setSubmitted(true)}
               className="flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-white transition hover:bg-[#d85643]"
@@ -474,7 +482,7 @@ export default function AssessmentsPage() {
   const [storedAssessments, setStoredAssessments] = useState<Assessment[]>([]);
   const [results, setResults] = useState<StoredAssessmentResult[]>([]);
   useEffect(() => {
-    setStoredAssessments(getPublishedAssessments().map((item) => ({ id: item.id, skill: item.skill, category: item.category, difficulty: item.difficulty, questions: item.questions?.length ?? 0, time: `${item.duration} min`, status: "Not started", color: "#e9f0ff", mark: item.skill.slice(0, 3), description: item.description, published: true })));
+    setStoredAssessments(getPublishedAssessments().map((item) => ({ id: item.id, skill: item.skill, category: item.category, difficulty: item.difficulty, questions: item.questions?.length ?? 0, time: `${item.duration} min`, status: "Not started", color: "#e9f0ff", mark: item.skill.slice(0, 3), description: item.description, published: true, authoredQuestions: (item.questions ?? []).map((question) => { const draft = question as { prompt?: string; options?: string[]; correctAnswer?: string }; const options = draft.options ?? []; return { prompt: draft.prompt ?? "", options, answer: Math.max(0, options.indexOf(draft.correctAnswer ?? "")) }; }).filter((question) => question.prompt && question.options.length) })));
     setResults(getAssessmentResults());
   }, []);
   const availableAssessments = [...storedAssessments, ...assessments.filter((item) => !storedAssessments.some((stored) => stored.id === item.id))].map((item) => {
