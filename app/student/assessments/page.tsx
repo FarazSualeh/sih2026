@@ -1,6 +1,7 @@
 "use client";
 import { StudentLayout } from "@/components/student-layout";
-import { useMemo, useState } from "react";
+import { getAssessmentResults, getPublishedAssessments, saveAssessmentResult, type StoredAssessmentResult } from "@/lib/assessment-storage";
+import { useEffect, useMemo, useState } from "react";
 
 type IconName =
   | "grid"
@@ -125,6 +126,7 @@ type Assessment = {
   color: string;
   mark: string;
   description: string;
+  published?: boolean;
 };
 
 const assessments: Assessment[] = [
@@ -327,9 +329,11 @@ function AssessmentCard({
 function TakingAssessment({
   assessment,
   onExit,
+  onComplete,
 }: {
   assessment: Assessment;
   onExit: () => void;
+  onComplete: (assessment: Assessment, score: number, total: number) => void;
 }) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -366,7 +370,10 @@ function TakingAssessment({
             strengthen your readiness.
           </p>
           <button
-            onClick={onExit}
+            onClick={() => {
+              onComplete(assessment, score, questions.length);
+              onExit();
+            }}
             className="mt-7 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-white transition hover:bg-[#d85643]"
           >
             Back to assessments <Icon name="arrow" size={16} />
@@ -462,19 +469,33 @@ function TakingAssessment({
 }
 
 export default function AssessmentsPage() {
-    const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("All");
   const [taking, setTaking] = useState<Assessment | null>(null);
+  const [storedAssessments, setStoredAssessments] = useState<Assessment[]>([]);
+  const [results, setResults] = useState<StoredAssessmentResult[]>([]);
+  useEffect(() => {
+    setStoredAssessments(getPublishedAssessments().map((item) => ({ id: item.id, skill: item.skill, category: item.category, difficulty: item.difficulty, questions: item.questions?.length ?? 0, time: `${item.duration} min`, status: "Not started", color: "#e9f0ff", mark: item.skill.slice(0, 3), description: item.description, published: true })));
+    setResults(getAssessmentResults());
+  }, []);
+  const availableAssessments = [...storedAssessments, ...assessments.filter((item) => !storedAssessments.some((stored) => stored.id === item.id))].map((item) => {
+    const result = results.find((entry) => entry.assessmentId === item.id);
+    return result ? { ...item, status: "Completed" as const, score: result.percentage } : item;
+  });
   const filtered = useMemo(
     () =>
-      assessments.filter(
+      availableAssessments.filter(
         (item) => filter === "All" || item.category === filter,
       ),
-    [filter],
+    [filter, availableAssessments],
   );
+  const completeAssessment = (assessment: Assessment, score: number, total: number) => {
+    saveAssessmentResult({ id: `${assessment.id}-Aarav Sharma`, assessmentId: assessment.id, assessmentTitle: assessment.skill, skill: assessment.skill, studentName: "Aarav Sharma", department: "Computer Science", score, total, percentage: Math.round(score / total * 100), completionDate: new Date().toISOString() });
+    setResults(getAssessmentResults());
+  };
   if (taking)
     return (
       <StudentLayout>
-        <TakingAssessment assessment={taking} onExit={() => setTaking(null)} />
+        <TakingAssessment assessment={taking} onExit={() => setTaking(null)} onComplete={completeAssessment} />
       </StudentLayout>
     );
   return (
@@ -491,7 +512,7 @@ export default function AssessmentsPage() {
           </p>
         </div>
         <button
-          onClick={() => setTaking(assessments[0])}
+          onClick={() => setTaking(availableAssessments[0])}
           className="flex w-fit items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-white shadow-[0_8px_16px_rgba(228,98,78,0.18)] transition hover:-translate-y-0.5 hover:bg-[#d85643]"
         >
           <Icon name="spark" size={16} />
@@ -539,7 +560,7 @@ export default function AssessmentsPage() {
             <div className="h-full w-[40%] rounded-full bg-olive" />
           </div>
           <button
-            onClick={() => setTaking(assessments[0])}
+            onClick={() => setTaking(availableAssessments[0])}
             className="mt-6 flex items-center gap-2 text-sm font-bold text-olive transition hover:text-ink"
           >
             <Icon name="play" size={15} />
@@ -591,17 +612,7 @@ export default function AssessmentsPage() {
             <span>Score</span>
             <span>Date</span>
           </div>
-          {[
-            ["Python foundations", "Python", "72%", "18 Aug 2026", "bg-olive"],
-            ["SQL for analytics", "SQL", "64%", "04 Aug 2026", "bg-gold"],
-            [
-              "Workplace communication",
-              "Communication",
-              "78%",
-              "28 Jul 2026",
-              "bg-coral",
-            ],
-          ].map(([title, skill, score, date, tone]) => (
+          {results.map((result) => [result.assessmentTitle, result.skill, `${result.percentage}%`, new Date(result.completionDate).toLocaleDateString(), "bg-olive"]).map(([title, skill, score, date, tone]) => (
             <div
               key={title}
               className="grid grid-cols-[1fr_auto] gap-4 border-b border-line px-5 py-4 last:border-0 sm:grid-cols-[1.2fr_1fr_0.65fr_0.65fr] sm:items-center sm:px-6"

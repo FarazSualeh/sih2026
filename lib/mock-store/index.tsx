@@ -8,6 +8,7 @@ import {
 } from "@/lib/mock-data/industry";
 import type { ApplicationStatus, CandidateApplication, SkillRequirement } from "@/lib/types";
 import type { AssessmentResult } from "./assessments-store";
+import { getAssessmentResults, getPublishedAssessments } from "@/lib/assessment-storage";
 
 export type PublishedAssessment = {
   id: string;
@@ -86,8 +87,14 @@ export function MockStoreProvider({ children }: { children: ReactNode }) {
       status: "Live",
     })),
   );
-  const [assessments, setAssessments] = useState<PublishedAssessment[]>(initialPublishedAssessments);
-  const [results] = useState<AssessmentResult[]>(initialResults);
+  const [assessments, setAssessments] = useState<PublishedAssessment[]>(() => [
+    ...getPublishedAssessments().map((assessment) => ({ id: assessment.id, title: assessment.title, skill: assessment.skill, department: assessment.assignedDepartments[0] ?? "Computer Engineering", semester: "Semester 6", deadline: "2026-09-30", status: "Published" as const, assignment: { departments: assessment.assignedDepartments, semesters: ["Semester 6"], studentIds: [] }, questions: assessment.questions ?? [] })),
+    ...initialPublishedAssessments,
+  ]);
+  const [results] = useState<AssessmentResult[]>(() => [
+    ...getAssessmentResults().map((result) => ({ ...result, semester: "Semester 6", breakdown: [{ skill: result.skill, score: result.percentage }] })),
+    ...initialResults,
+  ]);
 
   const value: MockStore = {
     applications,
